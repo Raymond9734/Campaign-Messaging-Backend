@@ -65,7 +65,9 @@ func (r *outboundMessageRepository) CreateBatch(ctx context.Context, messages []
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback() // Rollback is safe to call even after Commit
+	}()
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO outbound_messages (campaign_id, customer_id, status, rendered_content, retry_count)
