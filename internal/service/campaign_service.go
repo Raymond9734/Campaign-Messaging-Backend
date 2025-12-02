@@ -132,10 +132,15 @@ func (s *campaignService) SendCampaign(ctx context.Context, campaignID int64, re
 		return nil, err
 	}
 
-	// Check if campaign can be sent
+	// Check if campaign can be sent (idempotency check)
+	// Prevents duplicate sends if API is called multiple times
 	if !campaign.CanBeSent() {
+		s.logger.Warn("idempotency check failed: campaign already processed",
+			slog.Int64("campaign_id", campaignID),
+			slog.String("current_status", campaign.Status),
+		)
 		return nil, models.ErrConflictWithMsg(
-			fmt.Sprintf("campaign with status '%s' cannot be sent", campaign.Status),
+			fmt.Sprintf("campaign already processed (status: '%s'). To prevent duplicate sends, campaigns in 'sending', 'sent', or 'failed' status cannot be sent again", campaign.Status),
 		)
 	}
 

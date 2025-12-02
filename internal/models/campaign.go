@@ -90,6 +90,8 @@ func IsValidCampaignStatus(status string) bool {
 }
 
 // CanBeSent checks if a campaign can be sent
+// This provides idempotency: once a campaign is "sending", "sent", or "failed",
+// it cannot be sent again, preventing duplicate sends if API is called multiple times
 func (c *Campaign) CanBeSent() bool {
 	return c.Status == CampaignStatusDraft || c.Status == CampaignStatusScheduled
 }
