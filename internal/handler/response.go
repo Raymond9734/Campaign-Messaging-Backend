@@ -49,8 +49,3 @@ func respondSuccess(w http.ResponseWriter, data interface{}) {
 func respondCreated(w http.ResponseWriter, data interface{}) {
 	respondJSON(w, http.StatusCreated, data)
 }
-
-// respondNoContent writes a successful response with 204 No Content
-func respondNoContent(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusNoContent)
-}
