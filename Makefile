@@ -1,0 +1,51 @@
+.PHONY: help build run-api run-worker test clean docker-up docker-down migrate-up migrate-down
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+build: ## Build API and worker binaries
+	go build -o bin/api cmd/api/main.go
+	go build -o bin/worker cmd/worker/main.go
+
+run-api: ## Run the API server
+	go run cmd/api/main.go
+
+run-worker: ## Run the worker
+	go run cmd/worker/main.go
+
+test: ## Run tests
+	go test -v -race -cover ./...
+
+test-coverage: ## Run tests with coverage report
+	go test -v -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+clean: ## Clean build artifacts
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+
+docker-up: ## Start all services with docker-compose
+	docker-compose up -d
+
+docker-down: ## Stop all services
+	docker-compose down
+
+docker-logs: ## Show docker logs
+	docker-compose logs -f
+
+migrate-up: ## Run database migrations
+	@echo "Running migrations..."
+	psql $(shell grep DB_HOST .env | cut -d '=' -f2-) -c '\i migrations/001_initial_schema.sql'
+
+migrate-down: ## Rollback database migrations
+	@echo "Rolling back migrations..."
+	psql $(shell grep DB_HOST .env | cut -d '=' -f2-) -c '\i migrations/001_initial_schema_down.sql'
+
+deps: ## Download dependencies
+	go mod download
+	go mod tidy
+
+lint: ## Run linter
+	golangci-lint run ./...
+
+.DEFAULT_GOAL := help
