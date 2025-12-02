@@ -71,8 +71,6 @@ func main() {
 
 	// Initialize services
 	templateSvc := service.NewTemplateService()
-	customerSvc := service.NewCustomerService(customerRepo, logger)
-	messageSvc := service.NewMessageService(messageRepo, logger)
 
 	campaignSvc := service.NewCampaignService(
 		campaignRepo,
@@ -146,8 +144,4 @@ func main() {
 
 		logger.Info("server stopped gracefully")
 	}
-
-	// Suppress unused variable warnings
-	_ = customerSvc
-	_ = messageSvc
 }
