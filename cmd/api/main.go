@@ -15,6 +15,7 @@ import (
 	"github.com/Raymond9734/smsleopard-backend-challenge/internal/config"
 	"github.com/Raymond9734/smsleopard-backend-challenge/internal/db"
 	"github.com/Raymond9734/smsleopard-backend-challenge/internal/handler"
+	"github.com/Raymond9734/smsleopard-backend-challenge/internal/queue"
 	"github.com/Raymond9734/smsleopard-backend-challenge/internal/repository"
 	"github.com/Raymond9734/smsleopard-backend-challenge/internal/service"
 )
@@ -50,6 +51,19 @@ func main() {
 
 	logger.Info("connected to database")
 
+	// Connect to Redis queue
+	queueClient, err := queue.NewRedisClient(queue.RedisConfig{
+		URL:       cfg.Queue.RedisURL,
+		QueueName: cfg.Queue.QueueName,
+	}, logger)
+	if err != nil {
+		logger.Error("failed to connect to Redis", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer queueClient.Close()
+
+	logger.Info("connected to Redis queue")
+
 	// Initialize repositories
 	customerRepo := repository.NewCustomerRepository(database.DB)
 	campaignRepo := repository.NewCampaignRepository(database.DB)
@@ -60,22 +74,18 @@ func main() {
 	customerSvc := service.NewCustomerService(customerRepo, logger)
 	messageSvc := service.NewMessageService(messageRepo, logger)
 
-	// Note: Queue client will be nil until Phase 6
-	// For now, we'll handle this gracefully
-	var queueClient interface{} = nil
-
 	campaignSvc := service.NewCampaignService(
 		campaignRepo,
 		customerRepo,
 		messageRepo,
 		templateSvc,
-		nil, // Queue client - will be implemented in Phase 6
+		queueClient,
 		logger,
 	)
 
 	// Initialize handlers
 	campaignHandler := handler.NewCampaignHandler(campaignSvc, logger)
-	healthHandler := handler.NewHealthHandler(database.DB, nil, logger)
+	healthHandler := handler.NewHealthHandler(database.DB, queueClient, logger)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -137,8 +147,7 @@ func main() {
 		logger.Info("server stopped gracefully")
 	}
 
-	// Suppress unused variable warnings temporarily
+	// Suppress unused variable warnings
 	_ = customerSvc
 	_ = messageSvc
-	_ = queueClient
 }
