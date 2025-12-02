@@ -1,7 +1,16 @@
-.PHONY: help build run-api run-worker test clean docker-up docker-down migrate-up migrate-down
+.PHONY: help setup build run-api run-worker test clean docker-up docker-down migrate-up migrate-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+setup: ## Setup .env file from .env.example (if not exists)
+	@if [ ! -f .env ]; then \
+		cp .env.example .env && \
+		echo "✓ Created .env from .env.example"; \
+		echo "⚠️  Please review and update .env with your settings"; \
+	else \
+		echo ".env already exists"; \
+	fi
 
 build: ## Build API and worker binaries
 	go build -o bin/api cmd/api/main.go
@@ -25,7 +34,11 @@ clean: ## Clean build artifacts
 	rm -f coverage.out coverage.html
 
 docker-up: ## Start all services with docker-compose
-	docker-compose up -d
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
+	docker-compose up 
 
 docker-down: ## Stop all services
 	docker-compose down
