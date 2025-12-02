@@ -351,6 +351,83 @@ curl http://localhost:8080/campaigns/1
 docker-compose logs -f worker
 ```
 
+## Extra Feature: Idempotency
+
+### What Was Implemented
+
+**Application-level idempotency** to prevent duplicate campaign sends if the API is called multiple times.
+
+### How It Works
+
+The system uses campaign status as a state machine to enforce idempotency:
+
+```txt
+POST /campaigns/1/send (First Call)
+  ↓
+Status: "draft" → Process messages → Status: "sending"
+✓ Returns: {"campaign_id": 1, "messages_queued": 5, "status": "sending"}
+
+POST /campaigns/1/send (Second Call)
+  ↓
+Status: "sending" → CanBeSent() check fails
+✗ Returns: 409 Conflict - "campaign already processed"
+```
+
+**Implementation Details:**
+
+- `CanBeSent()` method checks if status is "draft" or "scheduled"
+- Once status changes to "sending", "sent", or "failed", the campaign cannot be sent again
+- Returns clear 409 Conflict error with explanation
+- Logs idempotency failures for auditing
+
+### Why Idempotency Is Critical
+
+**Real-World Scenarios:**
+
+1. **Network Timeouts**: Client retries request after timeout, thinking it failed
+2. **User Error**: User clicks "Send" button multiple times
+3. **Load Balancer Retries**: Infrastructure-level request duplication
+4. **Race Conditions**: Multiple concurrent requests to send same campaign
+
+**Without Idempotency:**
+
+- Customers receive duplicate messages (poor UX, cost increase)
+- Database bloat with duplicate message records
+- Queue flooded with duplicate jobs
+- Wasted SMS/WhatsApp credits
+
+**With Idempotency:**
+
+- Same campaign can only be sent once
+- Graceful error messages guide users
+- Audit trail of duplicate attempts
+- Cost protection and customer experience
+
+### Trade-offs
+
+**Chosen Approach (Status-Based):**
+
+- **Pros**: Simple, no schema changes, easy to understand
+- **Cons**: Campaign can never be resent (even if desired)
+
+**Alternative (Not Implemented):**
+
+- Idempotency keys in request headers
+- Allow resend with explicit "force" flag
+- Time-based idempotency windows
+
+For this use case, preventing duplicate sends is more important than allowing resends. To resend, create a new campaign.
+
+### Scheduled Campaigns Note
+
+The system supports `scheduled_at` field for campaigns:
+
+- Campaigns with `scheduled_at` are marked as "scheduled" status
+- **Manual trigger required**: Call `/campaigns/{id}/send` when ready
+- **Not implemented**: Automatic background dispatch at scheduled time
+
+---
+
 ## Design Decisions
 
 ### Why Chi Router?
