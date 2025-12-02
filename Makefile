@@ -73,7 +73,12 @@ deps: ## Download dependencies
 	go mod download
 	go mod tidy
 
-lint: ## Run linter
-	golangci-lint run ./...
+lint: ## Run linter (requires golangci-lint)
+	@which golangci-lint > /dev/null 2>&1 || test -f ~/go/bin/golangci-lint || (echo "❌ golangci-lint not installed. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest" && echo "Then add ~/go/bin to your PATH or run: export PATH=\$$PATH:~/go/bin" && exit 1)
+	@if which golangci-lint > /dev/null 2>&1; then \
+		golangci-lint run ./...; \
+	else \
+		~/go/bin/golangci-lint run ./...; \
+	fi
 
 .DEFAULT_GOAL := help
