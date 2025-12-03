@@ -27,9 +27,8 @@ type Campaign struct {
 	Channel      string     `json:"channel"`
 	Status       string     `json:"status"`
 	BaseTemplate string     `json:"base_template"`
-	ScheduledAt  *time.Time `json:"scheduled_at,omitempty"`
+	ScheduledAt  *time.Time `json:"scheduled_at"`
 	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // CampaignFilter holds filtering options for listing campaigns
@@ -50,8 +49,14 @@ type CampaignStats struct {
 
 // CampaignWithStats combines campaign details with statistics
 type CampaignWithStats struct {
-	Campaign
-	Stats CampaignStats `json:"stats"`
+	ID           int64         `json:"id"`
+	Name         string        `json:"name"`
+	Channel      string        `json:"channel"`
+	Status       string        `json:"status"`
+	BaseTemplate string        `json:"base_template"`
+	ScheduledAt  *time.Time    `json:"scheduled_at"`
+	CreatedAt    time.Time     `json:"created_at"`
+	Stats        CampaignStats `json:"stats"`
 }
 
 // Validate performs validation on campaign data
