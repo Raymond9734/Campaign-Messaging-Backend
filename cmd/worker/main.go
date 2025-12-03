@@ -87,6 +87,7 @@ func main() {
 	go func() {
 		logger.Info("starting message consumer",
 			slog.Int("max_retry_count", cfg.Worker.MaxRetryCount),
+			slog.Int("concurrency", cfg.Worker.Concurrency),
 		)
 
 		// Define message handler
@@ -94,8 +95,8 @@ func main() {
 			return processor.Process(ctx, job)
 		}
 
-		// Start consuming
-		consumerErrors <- queueClient.Consume(ctx, handler)
+		// Start consuming with configured concurrency
+		consumerErrors <- queueClient.Consume(ctx, handler, cfg.Worker.Concurrency)
 	}()
 
 	// Wait for interrupt signal or consumer error
