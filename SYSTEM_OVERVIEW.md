@@ -15,8 +15,6 @@
 │ location        │   │
 │ preferred       │   │
 │  _product       │   │
-│ created_at      │   │
-│ updated_at      │   │
 └─────────────────┘   │
                       │
                       │
@@ -30,8 +28,8 @@
 │ base_template   │        │ rendered_content │
 │ scheduled_at    │        │ last_error       │
 │ created_at      │        │ retry_count      │
-│ updated_at      │        │ created_at       │
-└─────────────────┘        │ updated_at       │
+└─────────────────┘        │ created_at       │
+                           │ updated_at       │
                            └──────────────────┘
 ```
 
@@ -41,10 +39,17 @@
 
 Stores customer information for campaign targeting.
 
+**Columns:**
+
+- `id` - Primary key
+- `phone` - Customer phone number (required)
+- `first_name`, `last_name` - Customer name
+- `location` - Customer location
+- `preferred_product` - Product preference for personalization
+
 **Key Indexes:**
 
 - `idx_customers_phone` - Fast phone number lookups
-- `idx_customers_created_at` - Pagination support
 
 **Business Rules:**
 
@@ -55,13 +60,23 @@ Stores customer information for campaign targeting.
 
 Campaign definitions with message templates.
 
+**Columns:**
+
+- `id` - Primary key
+- `name` - Campaign name
+- `channel` - sms or whatsapp
+- `status` - draft/scheduled/sending/sent/failed
+- `base_template` - Message template with {placeholders}
+- `scheduled_at` - Optional scheduled send time
+- `created_at` - Campaign creation timestamp
+
 **Status Values:**
 
 - `draft` - Created, not sent yet
 - `scheduled` - Has scheduled_at timestamp
-- `sending` - Currently being processed
-- `sent` - All messages processed
-- `failed` - Campaign failed
+- `sending` - Currently being processed (worker updates to 'sent' when done)
+- `sent` - All messages processed successfully
+- `failed` - All messages failed
 
 **Channel Values:**
 
@@ -84,6 +99,17 @@ Campaign definitions with message templates.
 
 Individual messages to be sent to customers.
 
+**Columns:**
+
+- `id` - Primary key
+- `campaign_id` - Foreign key to campaigns
+- `customer_id` - Foreign key to customers
+- `status` - pending/sent/failed (no "sending" status)
+- `rendered_content` - Pre-rendered message with customer data
+- `last_error` - Error message for failed sends
+- `retry_count` - Number of send attempts (max 3)
+- `created_at`, `updated_at` - Timestamps
+
 **Status Transitions:**
 
 ```md
@@ -103,6 +129,7 @@ pending → failed (failure after retries)
 - retry_count increments on each failure
 - Max retries: 3 (configurable)
 - last_error stores failure reason
+- Messages have no "sending" status (only pending/sent/failed)
 
 ### Foreign Key Relationships
 
@@ -120,6 +147,24 @@ pending → failed (failure after retries)
 2. **Stats Performance**: Composite index `(campaign_id, status)` enables fast GROUP BY
 3. **Worker Efficiency**: Index on `(status, created_at)` for `WHERE status='pending'` queries
 4. **Filter Performance**: Separate indexes on commonly filtered fields
+
+### Stats Response Note
+
+The API returns campaign statistics in this format:
+
+```json
+{
+  "stats": {
+    "total": 100,
+    "pending": 45,
+    "sending": 0,
+    "sent": 50,
+    "failed": 5
+  }
+}
+```
+
+**Important**: The `"sending"` field is **always 0** in our implementation because outbound messages only have three statuses: `pending`, `sent`, and `failed`. There is no in-flight "sending" status for individual messages.
 
 ---
 
@@ -190,6 +235,7 @@ pending → failed (failure after retries)
    e. Update Campaign Status
       - SET status = 'sending'
       - Indicates processing started
+      - Worker will update to 'sent' when all messages complete
 ```
 
 #### Phase 3: Response
@@ -280,12 +326,16 @@ Start Worker
        │
        ├─→ e. Handle Success
        │   - UPDATE outbound_messages SET status='sent'
+       │   - Check if all campaign messages complete
+       │   - If all complete: UPDATE campaigns SET status='sent'
        │   - Log success
        │
        └─→ f. Handle Failure
            - INCREMENT retry_count
            - IF retry_count >= 3:
                UPDATE status='failed', last_error='max retries exceeded'
+               Check if all campaign messages complete
+               If all complete: UPDATE campaigns SET status='sent' or 'failed'
            - ELSE:
                UPDATE status='failed', last_error='network error'
                (can be manually re-queued)
@@ -321,30 +371,78 @@ Attempt 3: (Max retries)
 - Dead letter queue (DLQ) for permanently failed messages
 - Monitoring and alerting on failure rates
 
+### Campaign Status Update Logic
+
+After processing each message (whether success or permanent failure), the worker checks if all messages for the campaign are complete:
+
+```go
+func updateCampaignStatusIfComplete(ctx, campaignID) {
+    // Get campaign with stats
+    campaign := getCampaignWithStats(campaignID)
+
+    // Check if all messages complete (no pending messages)
+    if campaign.Stats.Pending > 0 {
+        return  // Still processing
+    }
+
+    // Determine final status
+    if campaign.Stats.Failed > 0 && campaign.Stats.Sent == 0 {
+        newStatus = "failed"    // ALL messages failed
+    } else {
+        newStatus = "sent"      // At least SOME messages sent successfully
+    }
+
+    // Update campaign status
+    updateCampaignStatus(campaignID, newStatus)
+}
+```
+
+**Status Transition Rules:**
+
+- Campaign starts as `"sending"` when send is initiated
+- Worker updates to `"sent"` if any messages succeeded (partial success counts as sent)
+- Worker updates to `"failed"` only if ALL messages failed
+- Status update happens after the last message completes (pending = 0)
+
 ### Concurrency Model
 
 ```txt
 Worker Process
   │
   ├─→ Main Goroutine: queueClient.Consume()
-  │   └─→ Processes one message at a time (sequential)
+  │   └─→ Fetches jobs from Redis queue
+  │
+  ├─→ Worker Pool: Up to N concurrent goroutines (default: 5)
+  │   ├─→ Goroutine 1: Processing Message #1
+  │   ├─→ Goroutine 2: Processing Message #2
+  │   ├─→ Goroutine 3: Processing Message #3
+  │   ├─→ Goroutine 4: Processing Message #4
+  │   └─→ Goroutine 5: Processing Message #5
   │
   └─→ Signal Handler Goroutine
       └─→ Listens for SIGTERM/SIGINT
 ```
 
-**Why Sequential Processing?**
+**Concurrency Control:**
 
-- Simpler error handling
-- Easier to reason about
-- Prevents database connection pool exhaustion
-- For scaling: run multiple worker instances
+- **Semaphore-based**: Limits concurrent message processing
+- **Configured via `WORKER_CONCURRENCY`** env var (default: 5, max: 5)
+- **Graceful shutdown**: Waits for in-flight jobs to complete
+- **Resource-efficient**: Prevents database connection pool exhaustion
 
-**For Higher Throughput** (not implemented):
+**How It Works:**
 
-- Worker pool with N goroutines
-- Semaphore-based concurrency control
-- Configured via `WORKER_CONCURRENCY` env var
+1. Main loop continuously fetches jobs from Redis (BRPOP)
+2. For each job, acquires a semaphore slot (blocks if all 5 slots busy)
+3. Spawns goroutine to process the job
+4. Goroutine releases semaphore slot when done
+5. Maximum 5 messages processed concurrently at any time
+
+**For Even Higher Throughput:**
+
+- Run multiple worker instances (horizontal scaling)
+- Each instance can process up to 5 messages concurrently
+- Example: 3 worker instances × 5 concurrency = 15 messages processed simultaneously
 
 ---
 
@@ -472,7 +570,7 @@ result := placeholderPattern.ReplaceAllStringFunc(template, func(match string) s
 
 ### Missing Field Behavior
 
-**Design Decision**: Replace with empty string (not error)
+**Design Decision**: Replace with empty string (not error)/ (Use generic words e.g Customer)
 
 **Rationale:**
 
@@ -575,16 +673,5 @@ func (s *templateService) ValidateTemplate(template string) error {
 ---
 
 ## Conclusion
-
-This system demonstrates production-level Go backend architecture with:
-
-✅ **Clean separation**: Handler → Service → Repository layers
-✅ **Reliable queuing**: Redis with proper error handling
-✅ **Retry logic**: Configurable max attempts with tracking
-✅ **Stable pagination**: Consistent ordering, no duplicates
-✅ **Template system**: Simple but extensible for AI enhancement
-✅ **Proper logging**: Structured JSON logs with context
-✅ **Health checks**: Database and queue monitoring
-✅ **Graceful shutdown**: Clean resource cleanup
 
 The design prioritizes simplicity, correctness, and extensibility over premature optimization.
