@@ -94,6 +94,7 @@ func (r *campaignRepository) GetWithStats(ctx context.Context, id int64) (*model
 		SELECT
 			COUNT(*) as total,
 			COUNT(*) FILTER (WHERE status = 'pending') as pending,
+			0 as sending,
 			COUNT(*) FILTER (WHERE status = 'sent') as sent,
 			COUNT(*) FILTER (WHERE status = 'failed') as failed
 		FROM outbound_messages
@@ -103,6 +104,7 @@ func (r *campaignRepository) GetWithStats(ctx context.Context, id int64) (*model
 	err = r.db.QueryRowContext(ctx, statsQuery, id).Scan(
 		&stats.Total,
 		&stats.Pending,
+		&stats.Sending,
 		&stats.Sent,
 		&stats.Failed,
 	)

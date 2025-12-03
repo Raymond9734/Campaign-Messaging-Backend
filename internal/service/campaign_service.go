@@ -285,8 +285,6 @@ func (s *campaignService) PreviewPersonalized(ctx context.Context, campaignID in
 		Customer: &CustomerPreview{
 			ID:        customer.ID,
 			FirstName: customer.FirstName,
-			LastName:  customer.LastName,
-			Phone:     customer.Phone,
 		},
 	}, nil
 }

@@ -43,6 +43,7 @@ type CampaignFilter struct {
 type CampaignStats struct {
 	Total   int64 `json:"total"`
 	Pending int64 `json:"pending"`
+	Sending int64 `json:"sending"` // Always 0 in our implementation (no in-flight status)
 	Sent    int64 `json:"sent"`
 	Failed  int64 `json:"failed"`
 }
