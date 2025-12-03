@@ -783,6 +783,136 @@ The system supports `scheduled_at` field for campaigns:
 - No duplicates or missing records between pages
 - Works even as new campaigns are created
 
+---
+
+## Production Performance Optimizations
+
+These optimizations were considered but not implemented to keep the codebase simple and focused. They represent real-world improvements for production systems.
+
+### 1. Worker Query Efficiency (Database Denormalization)
+
+**Current Bottleneck:**
+
+The worker makes **3 database queries per message**:
+
+```go
+message, err := p.messageRepo.GetByID(ctx, job.OutboundMessageID)  // Query 1
+campaign, err := p.campaignRepo.GetByID(ctx, message.CampaignID)   // Query 2
+customer, err := p.customerRepo.GetByID(ctx, message.CustomerID)   // Query 3
+```
+
+**Solution: Denormalize Critical Fields**
+
+Add `customer_phone` and `channel` to `outbound_messages`:
+
+```sql
+ALTER TABLE outbound_messages
+    ADD COLUMN customer_phone VARCHAR(20) NOT NULL,
+    ADD COLUMN channel VARCHAR(20) NOT NULL;
+
+CREATE INDEX idx_outbound_messages_phone ON outbound_messages(customer_phone);
+```
+
+Update message creation in `campaign_service.go`:
+
+```go
+message := &models.OutboundMessage{
+    CampaignID:      campaign.ID,
+    CustomerID:      customer.ID,
+    CustomerPhone:   customer.Phone,      // Denormalized
+    Channel:         campaign.Channel,     // Denormalized
+    Status:          models.MessageStatusPending,
+    RenderedContent: renderedContent,
+    RetryCount:      0,
+}
+```
+
+**Benefits:**
+
+- ✅ Reduces worker queries from 3 to 1 (66% reduction)
+- ✅ Worker throughput increases ~3x
+- ✅ Captures data snapshot at send time (auditing)
+- ✅ Simpler worker logic
+
+**Trade-offs:**
+
+- ❌ Storage increase: ~40 bytes per message
+- ❌ Data duplication (acceptable for immutable send records)
+
+---
+
+### 2. Parallel Message Creation (API Optimization)
+
+**Current Bottleneck:**
+
+When sending campaigns, customer fetching and template rendering happens sequentially:
+
+```go
+for _, customerID := range req.CustomerIDs {
+    customer, err := s.customerRepo.GetByID(ctx, customerID)  // Sequential
+    renderedContent, err := s.templateSvc.Render(template, customer)
+    messages = append(messages, message)
+}
+```
+
+**Performance Impact:**
+
+- 100 customers × 10ms/query = **1 second** total
+
+**Solution: Goroutine Worker Pool**
+
+Process customers concurrently with bounded parallelism:
+
+```go
+workerPoolSize := 10
+semaphore := make(chan struct{}, workerPoolSize)
+messageChan := make(chan *models.OutboundMessage, len(req.CustomerIDs))
+
+var wg sync.WaitGroup
+for _, customerID := range req.CustomerIDs {
+    wg.Add(1)
+    go func(custID int64) {
+        defer wg.Done()
+        semaphore <- struct{}{}        // Acquire slot
+        defer func() { <-semaphore }() // Release slot
+
+        customer, err := s.customerRepo.GetByID(ctx, custID)
+        // ... render and create message ...
+        messageChan <- message
+    }(customerID)
+}
+
+go func() {
+    wg.Wait()
+    close(messageChan)
+}()
+
+// Collect results
+for message := range messageChan {
+    messages = append(messages, message)
+}
+```
+
+**Benefits:**
+
+- ✅ 100 customers: 1 second → ~100ms (10x faster)
+- ✅ Better API response times for large campaigns
+- ✅ CPU and I/O parallelism
+
+**Trade-offs:**
+
+- ❌ More complex code (goroutine management)
+- ❌ Risk of exhausting database connection pool
+- ❌ Diminishing returns for small campaigns (< 20 customers)
+
+**When to implement:**
+
+- Large campaigns (> 100 customers regularly)
+- Database has sufficient connection pool size
+- API response time is critical
+
+**Note**: Current implementation prioritizes simplicity and correctness over premature optimization.
+
 ## Time Spent & Tools Used
 
 **Total Time**: Approximately **8-12 hours**
