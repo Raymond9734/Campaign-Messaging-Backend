@@ -113,8 +113,20 @@ func (s *campaignService) List(ctx context.Context, filter models.CampaignFilter
 
 	pagination := models.NewPaginationResult(filter.Page, filter.PageSize, totalCount)
 
+	// Convert to simplified list items
+	listItems := make([]*CampaignListItem, len(campaigns))
+	for i, c := range campaigns {
+		listItems[i] = &CampaignListItem{
+			ID:        c.ID,
+			Name:      c.Name,
+			Channel:   c.Channel,
+			Status:    c.Status,
+			CreatedAt: c.CreatedAt,
+		}
+	}
+
 	return &CampaignListResult{
-		Data:       campaigns,
+		Data:       listItems,
 		Pagination: pagination,
 	}, nil
 }
