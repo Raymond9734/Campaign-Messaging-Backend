@@ -12,7 +12,8 @@ type Client interface {
 	Publish(ctx context.Context, job *models.MessageJob) error
 
 	// Consume receives messages from the queue and processes them with the handler
-	Consume(ctx context.Context, handler MessageHandler) error
+	// concurrency controls how many messages can be processed simultaneously
+	Consume(ctx context.Context, handler MessageHandler, concurrency int) error
 
 	// Close closes the queue connection
 	Close() error
