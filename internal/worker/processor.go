@@ -170,7 +170,7 @@ func (p *MessageProcessor) handleFailure(ctx context.Context, message *models.Ou
 
 	// Return error so worker can potentially requeue if needed
 	// Note: In this simple implementation, we don't auto-requeue
-	// In production, you might add the job back to queue with exponential backoff
+	// In production, we might add the job back to queue with exponential backoff
 	return fmt.Errorf("send failed, retry %d/%d: %w", message.RetryCount+1, p.maxRetries, sendErr)
 }
 
