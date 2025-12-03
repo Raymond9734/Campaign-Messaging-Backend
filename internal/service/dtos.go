@@ -72,12 +72,10 @@ type PreviewResult struct {
 	Customer        *CustomerPreview `json:"customer"`
 }
 
-// CustomerPreview contains minimal customer info for preview
+// CustomerPreview contains minimal customer info for preview (spec: only id and first_name)
 type CustomerPreview struct {
 	ID        int64  `json:"id"`
 	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Phone     string `json:"phone"`
 }
 
 // CampaignListItem represents a campaign in list view (simplified)

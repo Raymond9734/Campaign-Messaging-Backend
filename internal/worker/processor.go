@@ -111,6 +111,9 @@ func (p *MessageProcessor) handleSuccess(ctx context.Context, message *models.Ou
 		return fmt.Errorf("failed to update message status: %w", err)
 	}
 
+	// Check if all messages for this campaign are complete
+	p.updateCampaignStatusIfComplete(ctx, message.CampaignID)
+
 	return nil
 }
 
@@ -143,6 +146,9 @@ func (p *MessageProcessor) handleFailure(ctx context.Context, message *models.Ou
 			return err
 		}
 
+		// Check if all messages for this campaign are complete
+		p.updateCampaignStatusIfComplete(ctx, message.CampaignID)
+
 		return nil // Job processed (albeit failed)
 	}
 
@@ -166,4 +172,61 @@ func (p *MessageProcessor) handleFailure(ctx context.Context, message *models.Ou
 	// Note: In this simple implementation, we don't auto-requeue
 	// In production, you might add the job back to queue with exponential backoff
 	return fmt.Errorf("send failed, retry %d/%d: %w", message.RetryCount+1, p.maxRetries, sendErr)
+}
+
+// updateCampaignStatusIfComplete checks if all messages for a campaign are complete
+// and updates the campaign status accordingly
+func (p *MessageProcessor) updateCampaignStatusIfComplete(ctx context.Context, campaignID int64) {
+	// Get campaign with stats
+	campaign, err := p.campaignRepo.GetWithStats(ctx, campaignID)
+	if err != nil {
+		p.logger.Error("failed to get campaign stats",
+			slog.Int64("campaign_id", campaignID),
+			slog.String("error", err.Error()),
+		)
+		return
+	}
+
+	// Check if all messages are complete (no pending messages)
+	if campaign.Stats.Pending > 0 {
+		p.logger.Info("campaign still has pending messages",
+			slog.Int64("campaign_id", campaignID),
+			slog.Int64("pending", campaign.Stats.Pending),
+		)
+		return
+	}
+
+	// All messages complete - determine final status
+	var newStatus string
+	if campaign.Stats.Failed > 0 && campaign.Stats.Sent == 0 {
+		// All messages failed
+		newStatus = models.CampaignStatusFailed
+	} else {
+		// At least some messages sent successfully
+		newStatus = models.CampaignStatusSent
+	}
+
+	// Only update if status changed
+	if campaign.Status == newStatus {
+		return
+	}
+
+	// Update campaign status
+	err = p.campaignRepo.UpdateStatus(ctx, campaignID, newStatus)
+	if err != nil {
+		p.logger.Error("failed to update campaign status",
+			slog.Int64("campaign_id", campaignID),
+			slog.String("new_status", newStatus),
+			slog.String("error", err.Error()),
+		)
+		return
+	}
+
+	p.logger.Info("campaign status updated",
+		slog.Int64("campaign_id", campaignID),
+		slog.String("status", newStatus),
+		slog.Int64("total", campaign.Stats.Total),
+		slog.Int64("sent", campaign.Stats.Sent),
+		slog.Int64("failed", campaign.Stats.Failed),
+	)
 }
