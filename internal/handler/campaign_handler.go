@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
 	"github.com/Raymond9734/smsleopard-backend-challenge/internal/service"
 )
@@ -68,7 +70,8 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 
 // GetCampaign handles GET /campaigns/{id}
 func (h *CampaignHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
-	id, err := extractIDFromPath(r.URL.Path, "/campaigns/")
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid campaign ID")
 		return
@@ -85,7 +88,8 @@ func (h *CampaignHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 
 // SendCampaign handles POST /campaigns/{id}/send
 func (h *CampaignHandler) SendCampaign(w http.ResponseWriter, r *http.Request) {
-	id, err := extractIDFromPath(r.URL.Path, "/campaigns/")
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid campaign ID")
 		return
@@ -108,7 +112,8 @@ func (h *CampaignHandler) SendCampaign(w http.ResponseWriter, r *http.Request) {
 
 // PreviewPersonalized handles POST /campaigns/{id}/personalized-preview
 func (h *CampaignHandler) PreviewPersonalized(w http.ResponseWriter, r *http.Request) {
-	id, err := extractIDFromPath(r.URL.Path, "/campaigns/")
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "INVALID_ID", "Invalid campaign ID")
 		return
@@ -127,20 +132,4 @@ func (h *CampaignHandler) PreviewPersonalized(w http.ResponseWriter, r *http.Req
 	}
 
 	respondSuccess(w, result)
-}
-
-// extractIDFromPath extracts numeric ID from URL path
-func extractIDFromPath(path, prefix string) (int64, error) {
-	// Remove prefix to get ID part
-	idPart := path[len(prefix):]
-
-	// Find the end of the ID (before any slash)
-	for i, c := range idPart {
-		if c == '/' {
-			idPart = idPart[:i]
-			break
-		}
-	}
-
-	return strconv.ParseInt(idPart, 10, 64)
 }

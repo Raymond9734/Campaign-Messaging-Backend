@@ -33,7 +33,7 @@ func (r *customerRepository) Create(ctx context.Context, customer *models.Custom
 	query := `
 		INSERT INTO customers (phone, first_name, last_name, location, preferred_product)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at`
+		RETURNING id`
 
 	err := r.db.QueryRowContext(
 		ctx,
@@ -43,7 +43,7 @@ func (r *customerRepository) Create(ctx context.Context, customer *models.Custom
 		customer.LastName,
 		customer.Location,
 		customer.PreferredProduct,
-	).Scan(&customer.ID, &customer.CreatedAt, &customer.UpdatedAt)
+	).Scan(&customer.ID)
 
 	if err != nil {
 		return fmt.Errorf("failed to create customer: %w", err)
@@ -55,7 +55,7 @@ func (r *customerRepository) Create(ctx context.Context, customer *models.Custom
 // GetByID retrieves a customer by ID
 func (r *customerRepository) GetByID(ctx context.Context, id int64) (*models.Customer, error) {
 	query := `
-		SELECT id, phone, first_name, last_name, location, preferred_product, created_at, updated_at
+		SELECT id, phone, first_name, last_name, location, preferred_product
 		FROM customers
 		WHERE id = $1`
 
@@ -67,8 +67,6 @@ func (r *customerRepository) GetByID(ctx context.Context, id int64) (*models.Cus
 		&customer.LastName,
 		&customer.Location,
 		&customer.PreferredProduct,
-		&customer.CreatedAt,
-		&customer.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -84,7 +82,7 @@ func (r *customerRepository) GetByID(ctx context.Context, id int64) (*models.Cus
 // GetByPhone retrieves a customer by phone number
 func (r *customerRepository) GetByPhone(ctx context.Context, phone string) (*models.Customer, error) {
 	query := `
-		SELECT id, phone, first_name, last_name, location, preferred_product, created_at, updated_at
+		SELECT id, phone, first_name, last_name, location, preferred_product
 		FROM customers
 		WHERE phone = $1`
 
@@ -96,8 +94,6 @@ func (r *customerRepository) GetByPhone(ctx context.Context, phone string) (*mod
 		&customer.LastName,
 		&customer.Location,
 		&customer.PreferredProduct,
-		&customer.CreatedAt,
-		&customer.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -117,7 +113,7 @@ func (r *customerRepository) List(ctx context.Context, filter models.CustomerFil
 
 	// Build query with filters
 	query := `
-		SELECT id, phone, first_name, last_name, location, preferred_product, created_at, updated_at
+		SELECT id, phone, first_name, last_name, location, preferred_product
 		FROM customers
 		WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM customers WHERE 1=1`
@@ -167,8 +163,6 @@ func (r *customerRepository) List(ctx context.Context, filter models.CustomerFil
 			&customer.LastName,
 			&customer.Location,
 			&customer.PreferredProduct,
-			&customer.CreatedAt,
-			&customer.UpdatedAt,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan customer: %w", err)
@@ -189,9 +183,9 @@ func (r *customerRepository) Update(ctx context.Context, customer *models.Custom
 		UPDATE customers
 		SET phone = $1, first_name = $2, last_name = $3, location = $4, preferred_product = $5
 		WHERE id = $6
-		RETURNING updated_at`
+		`
 
-	err := r.db.QueryRowContext(
+	result, err := r.db.ExecContext(
 		ctx,
 		query,
 		customer.Phone,
@@ -200,13 +194,18 @@ func (r *customerRepository) Update(ctx context.Context, customer *models.Custom
 		customer.Location,
 		customer.PreferredProduct,
 		customer.ID,
-	).Scan(&customer.UpdatedAt)
-
-	if err == sql.ErrNoRows {
-		return models.ErrNotFoundWithMsg(fmt.Sprintf("customer with ID %d not found", customer.ID))
-	}
+	)
 	if err != nil {
 		return fmt.Errorf("failed to update customer: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return models.ErrNotFoundWithMsg(fmt.Sprintf("customer with ID %d not found", customer.ID))
 	}
 
 	return nil

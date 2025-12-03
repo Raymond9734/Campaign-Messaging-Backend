@@ -80,8 +80,17 @@ type CustomerPreview struct {
 	Phone     string `json:"phone"`
 }
 
+// CampaignListItem represents a campaign in list view (simplified)
+type CampaignListItem struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Channel   string    `json:"channel"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // CampaignListResult represents paginated campaign list results
 type CampaignListResult struct {
-	Data       []*models.Campaign       `json:"data"`
-	Pagination models.PaginationResult  `json:"pagination"`
+	Data       []*CampaignListItem     `json:"data"`
+	Pagination models.PaginationResult `json:"pagination"`
 }

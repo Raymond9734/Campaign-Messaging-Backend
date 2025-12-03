@@ -96,7 +96,7 @@ func main() {
 	// Register routes
 	r.Get("/health", healthHandler.Health)
 
-	r.Route("/campaigns", func(r chi.Router) {
+	r.Route("/api/campaigns", func(r chi.Router) {
 		r.Post("/", campaignHandler.CreateCampaign)
 		r.Get("/", campaignHandler.ListCampaigns)
 		r.Get("/{id}", campaignHandler.GetCampaign)

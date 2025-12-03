@@ -1,17 +1,13 @@
 package models
 
-import "time"
-
 // Customer represents a customer in the system
 type Customer struct {
-	ID               int64     `json:"id"`
-	Phone            string    `json:"phone"`
-	FirstName        string    `json:"first_name"`
-	LastName         string    `json:"last_name"`
-	Location         string    `json:"location"`
-	PreferredProduct string    `json:"preferred_product"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID               int64  `json:"id"`
+	Phone            string `json:"phone"`
+	FirstName        string `json:"first_name"`
+	LastName         string `json:"last_name"`
+	Location         string `json:"location"`
+	PreferredProduct string `json:"preferred_product"`
 }
 
 // CustomerFilter holds filtering options for listing customers

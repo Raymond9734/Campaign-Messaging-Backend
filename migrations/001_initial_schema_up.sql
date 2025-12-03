@@ -13,16 +13,11 @@ CREATE TABLE IF NOT EXISTS customers (
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     location VARCHAR(100),
-    preferred_product VARCHAR(100),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    preferred_product VARCHAR(100)
 );
 
 -- Index for phone lookups (used in customer searches)
 CREATE INDEX idx_customers_phone ON customers(phone);
-
--- Index for pagination and sorting
-CREATE INDEX idx_customers_created_at ON customers(created_at DESC);
 
 COMMENT ON TABLE customers IS 'Stores customer information for campaign targeting';
 COMMENT ON COLUMN customers.phone IS 'Customer phone number (E.164 format recommended)';
@@ -38,8 +33,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     status VARCHAR(20) NOT NULL CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'failed')),
     base_template TEXT NOT NULL,
     scheduled_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index for filtering by status (common query pattern)
@@ -93,7 +87,7 @@ COMMENT ON COLUMN outbound_messages.rendered_content IS 'Final personalized mess
 COMMENT ON COLUMN outbound_messages.retry_count IS 'Number of send attempts (max 3)';
 
 -- ========================================
--- Trigger: Update updated_at timestamp
+-- Trigger: Update updated_at timestamp (only for outbound_messages)
 -- ========================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -102,12 +96,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
-
-CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON customers
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_outbound_messages_updated_at BEFORE UPDATE ON outbound_messages
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

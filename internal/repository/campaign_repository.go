@@ -34,7 +34,7 @@ func (r *campaignRepository) Create(ctx context.Context, campaign *models.Campai
 	query := `
 		INSERT INTO campaigns (name, channel, status, base_template, scheduled_at)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at`
+		RETURNING id, created_at`
 
 	err := r.db.QueryRowContext(
 		ctx,
@@ -44,7 +44,7 @@ func (r *campaignRepository) Create(ctx context.Context, campaign *models.Campai
 		campaign.Status,
 		campaign.BaseTemplate,
 		campaign.ScheduledAt,
-	).Scan(&campaign.ID, &campaign.CreatedAt, &campaign.UpdatedAt)
+	).Scan(&campaign.ID, &campaign.CreatedAt)
 
 	if err != nil {
 		return fmt.Errorf("failed to create campaign: %w", err)
@@ -56,7 +56,7 @@ func (r *campaignRepository) Create(ctx context.Context, campaign *models.Campai
 // GetByID retrieves a campaign by ID
 func (r *campaignRepository) GetByID(ctx context.Context, id int64) (*models.Campaign, error) {
 	query := `
-		SELECT id, name, channel, status, base_template, scheduled_at, created_at, updated_at
+		SELECT id, name, channel, status, base_template, scheduled_at, created_at
 		FROM campaigns
 		WHERE id = $1`
 
@@ -69,7 +69,6 @@ func (r *campaignRepository) GetByID(ctx context.Context, id int64) (*models.Cam
 		&campaign.BaseTemplate,
 		&campaign.ScheduledAt,
 		&campaign.CreatedAt,
-		&campaign.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -113,8 +112,14 @@ func (r *campaignRepository) GetWithStats(ctx context.Context, id int64) (*model
 	}
 
 	return &models.CampaignWithStats{
-		Campaign: *campaign,
-		Stats:    stats,
+		ID:           campaign.ID,
+		Name:         campaign.Name,
+		Channel:      campaign.Channel,
+		Status:       campaign.Status,
+		BaseTemplate: campaign.BaseTemplate,
+		ScheduledAt:  campaign.ScheduledAt,
+		CreatedAt:    campaign.CreatedAt,
+		Stats:        stats,
 	}, nil
 }
 
@@ -125,7 +130,7 @@ func (r *campaignRepository) List(ctx context.Context, filter models.CampaignFil
 
 	// Build query with filters
 	query := `
-		SELECT id, name, channel, status, base_template, scheduled_at, created_at, updated_at
+		SELECT id, name, channel, status, base_template, scheduled_at, created_at
 		FROM campaigns
 		WHERE 1=1`
 	countQuery := `SELECT COUNT(*) FROM campaigns WHERE 1=1`
@@ -176,7 +181,6 @@ func (r *campaignRepository) List(ctx context.Context, filter models.CampaignFil
 			&campaign.BaseTemplate,
 			&campaign.ScheduledAt,
 			&campaign.CreatedAt,
-			&campaign.UpdatedAt,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan campaign: %w", err)
@@ -197,9 +201,9 @@ func (r *campaignRepository) Update(ctx context.Context, campaign *models.Campai
 		UPDATE campaigns
 		SET name = $1, channel = $2, status = $3, base_template = $4, scheduled_at = $5
 		WHERE id = $6
-		RETURNING updated_at`
+		`
 
-	err := r.db.QueryRowContext(
+	result, err := r.db.ExecContext(
 		ctx,
 		query,
 		campaign.Name,
@@ -208,13 +212,18 @@ func (r *campaignRepository) Update(ctx context.Context, campaign *models.Campai
 		campaign.BaseTemplate,
 		campaign.ScheduledAt,
 		campaign.ID,
-	).Scan(&campaign.UpdatedAt)
-
-	if err == sql.ErrNoRows {
-		return models.ErrNotFoundWithMsg(fmt.Sprintf("campaign with ID %d not found", campaign.ID))
-	}
+	)
 	if err != nil {
 		return fmt.Errorf("failed to update campaign: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return models.ErrNotFoundWithMsg(fmt.Sprintf("campaign with ID %d not found", campaign.ID))
 	}
 
 	return nil
