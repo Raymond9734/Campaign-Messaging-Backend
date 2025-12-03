@@ -77,13 +77,33 @@ func (c *redisClient) Publish(ctx context.Context, job *models.MessageJob) error
 }
 
 // Consume receives messages from the queue and processes them with the handler
-func (c *redisClient) Consume(ctx context.Context, handler MessageHandler) error {
-	c.logger.Info("starting queue consumer", slog.String("queue", c.queueName))
+// concurrency controls how many messages can be processed simultaneously (max 5)
+func (c *redisClient) Consume(ctx context.Context, handler MessageHandler, concurrency int) error {
+	// Validate concurrency
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	if concurrency > 5 {
+		concurrency = 5
+	}
+
+	c.logger.Info("starting queue consumer",
+		slog.String("queue", c.queueName),
+		slog.Int("concurrency", concurrency),
+	)
+
+	// Semaphore to limit concurrent processing
+	semaphore := make(chan struct{}, concurrency)
 
 	for {
 		select {
 		case <-ctx.Done():
-			c.logger.Info("consumer stopped by context")
+			c.logger.Info("consumer stopped by context, waiting for in-flight jobs to complete")
+			// Wait for all in-flight jobs to complete
+			for i := 0; i < concurrency; i++ {
+				semaphore <- struct{}{}
+			}
+			c.logger.Info("all in-flight jobs completed")
 			return ctx.Err()
 
 		default:
@@ -96,6 +116,10 @@ func (c *redisClient) Consume(ctx context.Context, handler MessageHandler) error
 				}
 				if err == context.Canceled || err == context.DeadlineExceeded {
 					c.logger.Info("consumer stopped by context")
+					// Wait for all in-flight jobs to complete
+					for i := 0; i < concurrency; i++ {
+						semaphore <- struct{}{}
+					}
 					return err
 				}
 				c.logger.Error("failed to pop from queue", slog.String("error", err.Error()))
@@ -124,15 +148,23 @@ func (c *redisClient) Consume(ctx context.Context, handler MessageHandler) error
 				slog.Int64("message_id", job.OutboundMessageID),
 			)
 
-			// Process job with handler
-			if err := handler(ctx, &job); err != nil {
-				c.logger.Error("handler failed to process job",
-					slog.Int64("message_id", job.OutboundMessageID),
-					slog.String("error", err.Error()),
-				)
-				// Note: Job is already popped from queue
-				// Retry logic is handled by the worker/handler
-			}
+			// Acquire semaphore slot (blocks if all slots are busy)
+			semaphore <- struct{}{}
+
+			// Process job concurrently in a goroutine
+			go func(job models.MessageJob) {
+				defer func() { <-semaphore }() // Release semaphore slot when done
+
+				// Process job with handler
+				if err := handler(ctx, &job); err != nil {
+					c.logger.Error("handler failed to process job",
+						slog.Int64("message_id", job.OutboundMessageID),
+						slog.String("error", err.Error()),
+					)
+					// Note: Job is already popped from queue
+					// Retry logic is handled by the worker/handler
+				}
+			}(job)
 		}
 	}
 }
