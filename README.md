@@ -72,8 +72,8 @@ This project implements a campaign dispatch service that:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Raymond9734/smsleopard-backend-challenge.git
-cd smsleopard-backend-challenge
+git clone https://github.com/Raymond9734/Campaign-Messaging-Backend.git
+cd Campaign-Messaging-Backend
 
 # 2. Setup environment variables
 make setup
@@ -959,15 +959,10 @@ This project was developed **with assistance from AI tools**, specifically:
 - Debugging and problem-solving
 - Final code review and refinements
 
-## Frontend
-
-**Status**: Not implemented
-
-This project focuses exclusively on the **backend implementation**. No frontend was built.
 
 ## License
 
-This is a take-home coding challenge. Code may be used for evaluation purposes.
+Code may be used for evaluation purposes.
 
 ## Author
 
