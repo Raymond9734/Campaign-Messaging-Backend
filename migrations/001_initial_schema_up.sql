@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS customers (
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     location VARCHAR(100),
-    preferred_product VARCHAR(100)
+    preferred_product VARCHAR(100),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index for phone lookups (used in customer searches)
@@ -33,7 +35,8 @@ CREATE TABLE IF NOT EXISTS campaigns (
     status VARCHAR(20) NOT NULL CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'failed')),
     base_template TEXT NOT NULL,
     scheduled_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index for filtering by status (common query pattern)
@@ -98,6 +101,12 @@ END;
 $$ language 'plpgsql';
 
 CREATE TRIGGER update_outbound_messages_updated_at BEFORE UPDATE ON outbound_messages
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON campaigns
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON customers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ========================================
