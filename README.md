@@ -1,4 +1,4 @@
-# SMSLeopard Backend Challenge
+# Campaign Messaging Backend
 
 A backend service for managing SMS and WhatsApp campaigns, built with Go.
 
