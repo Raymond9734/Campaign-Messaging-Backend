@@ -1,4 +1,4 @@
-module github.com/Raymond9734/smsleopard-backend-challenge
+module github.com/Raymond9734/campaign-messaging-backend
 
 go 1.24.9
 

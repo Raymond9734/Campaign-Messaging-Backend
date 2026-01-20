@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
 )
 
 // CampaignRepository defines the interface for campaign data access

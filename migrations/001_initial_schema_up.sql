@@ -1,4 +1,4 @@
--- SMSLeopard Backend Challenge - Initial Schema
+-- CampaignManager System - Initial Schema
 -- Creates tables: customers, campaigns, outbound_messages
 
 -- Enable extension for better timestamp handling

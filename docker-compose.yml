@@ -2,7 +2,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: smsleopard-postgres
+    container_name: campaign_manager-postgres
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -21,7 +21,7 @@ services:
   # Redis Queue
   redis:
     image: redis:7-alpine
-    container_name: smsleopard-redis
+    container_name: campaign_manager-redis
     ports:
       - "6379:6379"
     healthcheck:
@@ -35,7 +35,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    container_name: smsleopard-api
+    container_name: campaign_manager-api
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -62,7 +62,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    container_name: smsleopard-worker
+    container_name: campaign_manager-worker
     environment:
       DB_HOST: postgres
       DB_PORT: 5432

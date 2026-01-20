@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/queue"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/queue"
 )
 
 // HealthHandler handles health check requests

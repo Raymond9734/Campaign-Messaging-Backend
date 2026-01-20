@@ -3,7 +3,7 @@ package queue
 import (
 	"context"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
 )
 
 // Client defines the interface for queue operations

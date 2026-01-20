@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
 )
 
 // MockCampaignRepository for testing

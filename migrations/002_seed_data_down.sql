@@ -1,4 +1,4 @@
--- SMSLeopard Backend Challenge - Rollback Seed Data
+-- CampaignManager System - Rollback Seed Data
 -- Removes all seed data inserted by 002_seed_data_up.sql
 
 -- Delete in reverse order due to foreign key constraints

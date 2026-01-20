@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
 )
 
 func TestCampaignService_PreviewPersonalized(t *testing.T) {

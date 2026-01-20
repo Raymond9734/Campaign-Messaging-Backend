@@ -1,4 +1,4 @@
--- SMSLeopard Backend Challenge - Seed Data
+-- CampaignManager System - Seed Data
 -- Inserts sample customers and campaigns for testing
 
 -- ========================================

@@ -1,4 +1,4 @@
--- SMSLeopard Backend Challenge - Rollback Initial Schema
+-- CampaignManager System - Rollback Initial Schema
 -- Drops all tables and functions created in 001_initial_schema_up.sql
 
 -- Drop triggers first

@@ -1,4 +1,4 @@
-# SMSLeopard Backend Challenge - System Overview
+# CampaignManager  - System Overview
 
 ## Data Model and Entity Relationships
 

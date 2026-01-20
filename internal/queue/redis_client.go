@@ -9,7 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
 )
 
 // redisClient implements Client using Redis

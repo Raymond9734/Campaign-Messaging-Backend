@@ -8,12 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/config"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/db"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/queue"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/repository"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/worker"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/config"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/db"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/queue"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/repository"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/worker"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	logger.Info("starting SMSLeopard worker")
+	logger.Info("starting CampaignManager worker")
 
 	// Load configuration
 	cfg, err := config.Load()

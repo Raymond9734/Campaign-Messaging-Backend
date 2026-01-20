@@ -67,9 +67,9 @@ func Load() (*Config, error) {
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     dbPort,
-			User:     getEnv("DB_USER", "smsleopard"),
-			Password: getEnv("DB_PASSWORD", "smsleopard"),
-			DBName:   getEnv("DB_NAME", "smsleopard"),
+			User:     getEnv("DB_USER", "campaign_manager"),
+			Password: getEnv("DB_PASSWORD", "campaign_manager"),
+			DBName:   getEnv("DB_NAME", "campaign_manager"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		Queue: QueueConfig{

@@ -382,9 +382,9 @@ All configuration via environment variables (see `.env.example`):
 | -------------------- | ----------------------------------------- | ------------------------ |
 | `DB_HOST`            | PostgreSQL host                           | localhost                |
 | `DB_PORT`            | PostgreSQL port                           | 5432                     |
-| `DB_USER`            | Database user                             | smsleopard               |
-| `DB_PASSWORD`        | Database password                         | smsleopard               |
-| `DB_NAME`            | Database name                             | smsleopard               |
+| `DB_USER`            | Database user                             | campaign_manager               |
+| `DB_PASSWORD`        | Database password                         | campaign_manager               |
+| `DB_NAME`            | Database name                             | campaign_manager               |
 | `REDIS_URL`          | Redis connection URL                      | redis://localhost:6379/0 |
 | `QUEUE_NAME`         | Queue name                                | campaign_sends           |
 | `API_PORT`           | API server port                           | 8080                     |
@@ -766,7 +766,7 @@ The system supports `scheduled_at` field for campaigns:
 
 ### Why Mock Sender?
 
-- Challenge focuses on backend architecture
+- This project focuses on backend architecture
 - No real SMS API keys required
 - Easy to test failure scenarios
 - Simple to replace with real provider (interface-based)

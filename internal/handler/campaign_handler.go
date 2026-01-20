@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/service"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/service"
 )
 
 // CampaignHandler handles campaign HTTP requests

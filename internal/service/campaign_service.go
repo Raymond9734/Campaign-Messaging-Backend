@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/models"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/queue"
-	"github.com/Raymond9734/smsleopard-backend-challenge/internal/repository"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/models"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/queue"
+	"github.com/Raymond9734/campaign-messaging-backend/internal/repository"
 )
 
 // CampaignService handles campaign business logic
